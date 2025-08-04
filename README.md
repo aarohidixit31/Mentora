@@ -1,4 +1,4 @@
-# Mentora: Learn. Solve. Grow Together
+# Mentora: Learn. Solve. Grow Together !!
 
 **Mentora** is an all-in-one, student-powered platform built for doubt-solving, mentorship, and freelancing. It’s a space where students help students—whether it’s cracking DSA, preparing for placements, or landing freelance gigs.
 
