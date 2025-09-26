@@ -15,10 +15,10 @@ const auth = async (req, res, next) => {
     }
 
     // Extract token
-    const token = authHeader.substring(7); // Remove 'Bearer ' prefix
+    const token = authHeader.substring(7); 
 
     // Verify token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env);
     
     // Check if user still exists
     const user = await User.findById(decoded.userId);
@@ -30,7 +30,7 @@ const auth = async (req, res, next) => {
     }
 
     // Check if user is approved (for non-students)
-    if (!user.isApproved && user.role !== 'student') {
+    if (!user.isApproved && usJWT_SECRETer.role !== 'student') {
       return res.status(403).json({
         success: false,
         message: 'Account pending approval'
