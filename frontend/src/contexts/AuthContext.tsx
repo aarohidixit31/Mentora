@@ -1,7 +1,15 @@
-import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useReducer,
+  useEffect,
+  ReactNode,
+} from 'react';
 import { authAPI } from '../services/api';
 
-// Types
+// ============================
+// TYPES
+// ============================
 interface User {
   _id: string;
   name: string;
@@ -22,14 +30,6 @@ interface AuthState {
   isAuthenticated: boolean;
 }
 
-interface AuthContextType extends AuthState {
-  login: (email: string, password: string) => Promise<void>;
-  register: (userData: RegisterData) => Promise<void>;
-  logout: () => void;
-  updateUser: (userData: Partial<User>) => void;
-  refreshToken: () => Promise<void>;
-}
-
 interface RegisterData {
   name: string;
   email: string;
@@ -37,7 +37,18 @@ interface RegisterData {
   role?: 'student' | 'tutor' | 'freelancer';
 }
 
-// Action types
+interface AuthContextType extends AuthState {
+  login: (email: string, password: string) => Promise<void>;
+  register: (userData: RegisterData) => Promise<void>;
+  googleLogin: (googleToken: string) => Promise<void>;
+  logout: () => void;
+  updateUser: (userData: Partial<User>) => void;
+  refreshToken: () => Promise<void>;
+}
+
+// ============================
+// ACTION TYPES
+// ============================
 type AuthAction =
   | { type: 'AUTH_START' }
   | { type: 'AUTH_SUCCESS'; payload: { user: User; token: string } }
@@ -46,7 +57,9 @@ type AuthAction =
   | { type: 'UPDATE_USER'; payload: Partial<User> }
   | { type: 'SET_LOADING'; payload: boolean };
 
-// Initial state
+// ============================
+// INITIAL STATE
+// ============================
 const initialState: AuthState = {
   user: null,
   token: localStorage.getItem('token'),
@@ -54,14 +67,14 @@ const initialState: AuthState = {
   isAuthenticated: false,
 };
 
-// Reducer
+// ============================
+// REDUCER
+// ============================
 const authReducer = (state: AuthState, action: AuthAction): AuthState => {
   switch (action.type) {
     case 'AUTH_START':
-      return {
-        ...state,
-        isLoading: true,
-      };
+      return { ...state, isLoading: true };
+
     case 'AUTH_SUCCESS':
       return {
         ...state,
@@ -70,6 +83,7 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
         isLoading: false,
         isAuthenticated: true,
       };
+
     case 'AUTH_FAILURE':
       return {
         ...state,
@@ -78,6 +92,7 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
         isLoading: false,
         isAuthenticated: false,
       };
+
     case 'LOGOUT':
       return {
         ...state,
@@ -86,25 +101,34 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
         isLoading: false,
         isAuthenticated: false,
       };
+
     case 'UPDATE_USER':
       return {
         ...state,
-        user: state.user ? { ...state.user, ...action.payload } : null,
+        user: state.user
+          ? { ...state.user, ...action.payload }
+          : null,
       };
+
     case 'SET_LOADING':
       return {
         ...state,
         isLoading: action.payload,
       };
+
     default:
       return state;
   }
 };
 
-// Create context
+// ============================
+// CONTEXT
+// ============================
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Provider component
+// ============================
+// PROVIDER
+// ============================
 interface AuthProviderProps {
   children: ReactNode;
 }
@@ -112,11 +136,13 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [state, dispatch] = useReducer(authReducer, initialState);
 
-  // Check if user is authenticated on app load
+  // ============================
+  // CHECK AUTH ON LOAD
+  // ============================
   useEffect(() => {
     const checkAuth = async () => {
       const token = localStorage.getItem('token');
-      
+
       if (!token) {
         dispatch({ type: 'SET_LOADING', payload: false });
         return;
@@ -128,7 +154,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           dispatch({
             type: 'AUTH_SUCCESS',
             payload: {
-              user: response.data.data.user,
+              user: response.data.user,
               token,
             },
           });
@@ -146,18 +172,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     checkAuth();
   }, []);
 
-  // Login function
+  // ============================
+  // LOGIN (LOCAL)
+  // ============================
   const login = async (email: string, password: string): Promise<void> => {
     dispatch({ type: 'AUTH_START' });
 
     try {
       const response = await authAPI.login({ email, password });
-      
+
       if (response.data.success) {
         const { user, token } = response.data as any;
-        
         localStorage.setItem('token', token);
-        
+
         dispatch({
           type: 'AUTH_SUCCESS',
           payload: { user, token },
@@ -171,18 +198,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  // Register function
+  // ============================
+  // REGISTER (LOCAL)
+  // ============================
   const register = async (userData: RegisterData): Promise<void> => {
     dispatch({ type: 'AUTH_START' });
 
     try {
       const response = await authAPI.register(userData);
-      
+
       if (response.data.success) {
         const { user, token } = response.data as any;
-        
         localStorage.setItem('token', token);
-        
+
         dispatch({
           type: 'AUTH_SUCCESS',
           payload: { user, token },
@@ -192,31 +220,63 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
     } catch (error: any) {
       dispatch({ type: 'AUTH_FAILURE' });
-      throw new Error(error.response?.data?.message || 'Registration failed');
+      throw new Error(
+        error.response?.data?.message || 'Registration failed'
+      );
     }
   };
 
-  // Logout function
+  // ============================
+  // GOOGLE LOGIN  ✅ NEW
+  // ============================
+  const googleLogin = async (googleToken: string): Promise<void> => {
+    dispatch({ type: 'AUTH_START' });
+
+    try {
+      const response = await authAPI.googleLogin({ token: googleToken });
+
+      if (response.data.success) {
+        const { user, token } = response.data as any;
+        localStorage.setItem('token', token);
+
+        dispatch({
+          type: 'AUTH_SUCCESS',
+          payload: { user, token },
+        });
+      } else {
+        throw new Error('Google login failed');
+      }
+    } catch (error) {
+      dispatch({ type: 'AUTH_FAILURE' });
+      throw new Error('Google login failed');
+    }
+  };
+
+  // ============================
+  // LOGOUT
+  // ============================
   const logout = (): void => {
     localStorage.removeItem('token');
     dispatch({ type: 'LOGOUT' });
   };
 
-  // Update user function
+  // ============================
+  // UPDATE USER
+  // ============================
   const updateUser = (userData: Partial<User>): void => {
     dispatch({ type: 'UPDATE_USER', payload: userData });
   };
 
-  // Refresh token function
+  // ============================
+  // REFRESH TOKEN
+  // ============================
   const refreshToken = async (): Promise<void> => {
     try {
       const response = await authAPI.refreshToken();
-      
       if (response.data.success) {
-        const { token } = response.data.data;
+        const { token } = response.data as any;
         localStorage.setItem('token', token);
-        
-        // Update token in state if needed
+
         dispatch({
           type: 'AUTH_SUCCESS',
           payload: {
@@ -231,10 +291,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  // ============================
+  // CONTEXT VALUE
+  // ============================
   const value: AuthContextType = {
     ...state,
     login,
     register,
+    googleLogin,
     logout,
     updateUser,
     refreshToken,
@@ -247,13 +311,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   );
 };
 
-// Custom hook to use auth context
+// ============================
+// HOOK
+// ============================
 export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
-  
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+  if (!context) {
+    throw new Error('useAuth must be used within AuthProvider');
   }
-  
   return context;
 };

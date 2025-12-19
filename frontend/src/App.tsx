@@ -18,6 +18,7 @@ import Mentors from './pages/Mentors';
 import Freelance from './pages/Freelance';
 import Admin from './pages/Admin';
 import ProtectedRoute from './components/common/ProtectedRoute';
+import { GoogleOAuthProvider } from '@react-oauth/google';
 
 // Create a client for React Query
 const queryClient = new QueryClient({
@@ -32,9 +33,10 @@ const queryClient = new QueryClient({
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider theme={theme}>
-        <AuthProvider>
-          <Router>
+  <GoogleOAuthProvider clientId={process.env.REACT_APP_GOOGLE_CLIENT_ID!}>
+    <ThemeProvider theme={theme}>
+      <AuthProvider>
+        <Router>
             <GlobalStyles />
             <div className="App">
               <Navbar />
@@ -176,10 +178,11 @@ function App() {
                 }}
               />
             </div>
-          </Router>
-        </AuthProvider>
-      </ThemeProvider>
-    </QueryClientProvider>
+            </Router>
+      </AuthProvider>
+    </ThemeProvider>
+  </GoogleOAuthProvider>
+</QueryClientProvider>
   );
 }
 

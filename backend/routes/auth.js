@@ -1,21 +1,25 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const { body, validationResult } = require('express-validator');
+const { OAuth2Client } = require('google-auth-library');
 const User = require('../models/User');
 const { auth } = require('../middleware/auth');
 
 const router = express.Router();
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
-// Generate JWT Token
+// ============================
+// JWT HELPER
+// ============================
 const generateToken = (userId) => {
   return jwt.sign({ userId }, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRE || '7d'
   });
 };
 
-// @route   POST /api/auth/register
-// @desc    Register a new user
-// @access  Public
+// ============================
+// REGISTER (LOCAL)
+// ============================
 router.post('/register', [
   body('name')
     .trim()
@@ -34,7 +38,6 @@ router.post('/register', [
     .withMessage('Invalid role specified')
 ], async (req, res) => {
   try {
-    // Check for validation errors
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({
@@ -46,7 +49,6 @@ router.post('/register', [
 
     const { name, email, password, role = 'student' } = req.body;
 
-    // Check if user already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({
@@ -55,21 +57,19 @@ router.post('/register', [
       });
     }
 
-    // Create new user
     const user = new User({
       name,
       email,
       password,
       role,
-      isApproved: role === 'student' // Students are auto-approved
+      authProvider: 'local',
+      isApproved: role === 'student'
     });
 
     await user.save();
 
-    // Generate token
     const token = generateToken(user._id);
 
-    // Remove password from response
     const userResponse = user.toObject();
     delete userResponse.password;
 
@@ -89,9 +89,9 @@ router.post('/register', [
   }
 });
 
-// @route   POST /api/auth/login
-// @desc    Login user
-// @access  Public
+// ============================
+// LOGIN (LOCAL)
+// ============================
 router.post('/login', [
   body('email')
     .isEmail()
@@ -102,7 +102,6 @@ router.post('/login', [
     .withMessage('Password is required')
 ], async (req, res) => {
   try {
-    // Check for validation errors
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({
@@ -114,16 +113,14 @@ router.post('/login', [
 
     const { email, password } = req.body;
 
-    // Find user and include password for comparison
     const user = await User.findOne({ email }).select('+password');
-    if (!user) {
+    if (!user || user.authProvider === 'google') {
       return res.status(401).json({
         success: false,
-        message: 'Invalid credentials'
+        message: 'Please login using Google'
       });
     }
 
-    // Check password
     const isPasswordValid = await user.comparePassword(password);
     if (!isPasswordValid) {
       return res.status(401).json({
@@ -132,7 +129,6 @@ router.post('/login', [
       });
     }
 
-    // Check if user is approved (for tutors and freelancers)
     if (!user.isApproved && user.role !== 'student') {
       return res.status(403).json({
         success: false,
@@ -140,10 +136,8 @@ router.post('/login', [
       });
     }
 
-    // Generate token
     const token = generateToken(user._id);
 
-    // Remove password from response
     const userResponse = user.toObject();
     delete userResponse.password;
 
@@ -163,9 +157,63 @@ router.post('/login', [
   }
 });
 
-// @route   GET /api/auth/me
-// @desc    Get current user profile
-// @access  Private
+// ============================
+// GOOGLE AUTH
+// ============================
+router.post('/google', async (req, res) => {
+  try {
+    const { token } = req.body;
+    if (!token) {
+      return res.status(400).json({
+        success: false,
+        message: 'Google token missing'
+      });
+    }
+
+    const ticket = await googleClient.verifyIdToken({
+      idToken: token,
+      audience: process.env.GOOGLE_CLIENT_ID
+    });
+
+    const payload = ticket.getPayload();
+    const { sub, email, name, picture } = payload;
+
+    let user = await User.findOne({ email });
+
+    if (!user) {
+      user = await User.create({
+        name,
+        email,
+        googleId: sub,
+        avatar: picture,
+        authProvider: 'google',
+        role: 'student',
+        isVerified: true,
+        isApproved: true
+      });
+    }
+
+    const jwtToken = generateToken(user._id);
+
+    res.json({
+      success: true,
+      message: 'Google login successful',
+      token: jwtToken,
+      user
+    });
+
+  } catch (error) {
+    console.error('Google auth error:', error);
+    res.status(401).json({
+      success: false,
+      message: 'Google authentication failed'
+    });
+  }
+});
+
+// ============================
+// GET CURRENT USER
+// ============================
 router.get('/me', auth, async (req, res) => {
   try {
     const user = await User.findById(req.user.userId);
@@ -190,9 +238,9 @@ router.get('/me', auth, async (req, res) => {
   }
 });
 
-// @route   POST /api/auth/refresh
-// @desc    Refresh JWT token
-// @access  Private
+// ============================
+// REFRESH TOKEN
+// ============================
 router.post('/refresh', auth, async (req, res) => {
   try {
     const user = await User.findById(req.user.userId);
@@ -203,7 +251,6 @@ router.post('/refresh', auth, async (req, res) => {
       });
     }
 
-    // Generate new token
     const token = generateToken(user._id);
 
     res.json({
@@ -221,9 +268,9 @@ router.post('/refresh', auth, async (req, res) => {
   }
 });
 
-// @route   POST /api/auth/logout
-// @desc    Logout user (client-side token removal)
-// @access  Private
+// ============================
+// LOGOUT
+// ============================
 router.post('/logout', auth, (req, res) => {
   res.json({
     success: true,
