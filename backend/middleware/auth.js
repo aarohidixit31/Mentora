@@ -22,7 +22,7 @@ const auth = async (req, res, next) => {
     
     // Check if user still exists
     const user = await User.findById(decoded.userId);
-    if (!user) {
+    if (!user) { 
       return res.status(401).json({
         success: false,
         message: 'Token is no longer valid'
