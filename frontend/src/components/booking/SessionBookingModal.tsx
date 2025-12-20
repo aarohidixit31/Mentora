@@ -9,6 +9,7 @@ interface SessionBookingModalProps {
   mentorName: string;
   mentorAvatar: string;
   hourlyRate: number;
+  sessionId?: string;
 }
 
 const ModalOverlay = styled(motion.div)`
@@ -243,7 +244,8 @@ const SessionBookingModal: React.FC<SessionBookingModalProps> = ({
   onClose, 
   mentorName, 
   mentorAvatar,
-  hourlyRate 
+  hourlyRate,
+  sessionId,
 }) => {
   const [formData, setFormData] = useState({
     date: '',
@@ -266,12 +268,48 @@ const SessionBookingModal: React.FC<SessionBookingModalProps> = ({
   };
 
   const handleBookSession = () => {
-    // TODO: Implement actual booking logic
-    setIsBooked(true);
-    setTimeout(() => {
-      setIsBooked(false);
-      onClose();
-    }, 2000);
+    // If a `sessionId` is provided, call backend to book that session
+    const book = async () => {
+      try {
+        if (typeof (window) === 'undefined') return;
+        if ((window as any).fetch && (window as any).fetch) {
+          if (typeof (sessionId) !== 'undefined' && sessionId) {
+            const res = await fetch(`${(import.meta as any).env?.VITE_BACKEND_URL || 'http://localhost:5000'}/api/sessions/${sessionId}/book`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${localStorage.getItem('token')}`,
+              },
+            });
+
+            const data = await res.json();
+            if (data.success) {
+              setIsBooked(true);
+              setTimeout(() => {
+                setIsBooked(false);
+                onClose();
+              }, 1200);
+              return;
+            } else {
+              alert(data.message || 'Booking failed');
+              return;
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Booking error', err);
+        alert('Booking failed');
+      }
+
+      // Fallback to local simulated booking
+      setIsBooked(true);
+      setTimeout(() => {
+        setIsBooked(false);
+        onClose();
+      }, 1200);
+    };
+
+    book();
   };
 
   const isFormValid = formData.date && formData.time && formData.topic;
