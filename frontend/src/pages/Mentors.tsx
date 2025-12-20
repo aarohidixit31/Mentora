@@ -352,103 +352,13 @@ const ContactButton = styled.button<{ $variant?: 'primary' | 'secondary' }>`
   `}
 `;
 
-const mockMentors = [
-  {
-    id: 1,
-    name: "Dr. Sarah Johnson",
-    title: "Senior Software Engineer at Google",
-    avatar: "SJ",
-    rating: 4.9,
-    reviews: 127,
-    location: "San Francisco, CA",
-    bio: "Passionate about helping developers grow their careers. With 10+ years at Google, I specialize in system design, algorithms, and career advancement strategies.",
-    skills: ["System Design", "Algorithms", "Python", "Go", "Leadership"],
-    hourlyRate: 150,
-    available: true,
-    stats: { sessions: 234, students: 89, rating: 4.9 },
-    specialties: ["Career Growth", "Technical Interviews", "System Architecture"]
-  },
-  {
-    id: 2,
-    name: "Michael Chen",
-    title: "Principal Frontend Engineer at Meta",
-    avatar: "MC",
-    rating: 4.8,
-    reviews: 93,
-    location: "Seattle, WA",
-    bio: "Frontend architecture expert with a passion for performance optimization and modern web technologies. I love mentoring developers transitioning to senior roles.",
-    skills: ["React", "TypeScript", "Performance", "Architecture", "GraphQL"],
-    hourlyRate: 120,
-    available: true,
-    stats: { sessions: 156, students: 67, rating: 4.8 },
-    specialties: ["Frontend Architecture", "React Ecosystem", "Performance Optimization"]
-  },
-  {
-    id: 3,
-    name: "Dr. Emily Rodriguez",
-    title: "Data Science Director at Netflix",
-    avatar: "ER",
-    rating: 4.9,
-    reviews: 156,
-    location: "Los Angeles, CA",
-    bio: "Leading data science initiatives at Netflix. I help aspiring data scientists build strong foundations in ML, statistics, and practical problem-solving.",
-    skills: ["Machine Learning", "Python", "Statistics", "Deep Learning", "MLOps"],
-    hourlyRate: 180,
-    available: false,
-    stats: { sessions: 298, students: 134, rating: 4.9 },
-    specialties: ["Machine Learning", "Data Strategy", "Career Transition"]
-  },
-  {
-    id: 4,
-    name: "David Kim",
-    title: "DevOps Engineer at Amazon",
-    avatar: "DK",
-    rating: 4.7,
-    reviews: 78,
-    location: "Austin, TX",
-    bio: "Cloud infrastructure and DevOps specialist. I help developers understand scalable systems, CI/CD, and cloud-native architectures.",
-    skills: ["AWS", "Kubernetes", "Docker", "Terraform", "CI/CD"],
-    hourlyRate: 140,
-    available: true,
-    stats: { sessions: 187, students: 92, rating: 4.7 },
-    specialties: ["Cloud Architecture", "DevOps Practices", "Infrastructure as Code"]
-  },
-  {
-    id: 5,
-    name: "Lisa Wang",
-    title: "Product Manager at Stripe",
-    avatar: "LW",
-    rating: 4.8,
-    reviews: 112,
-    location: "New York, NY",
-    bio: "Product strategy and management expert. I mentor engineers transitioning to product roles and help PMs develop technical understanding.",
-    skills: ["Product Strategy", "Analytics", "User Research", "Agile", "Leadership"],
-    hourlyRate: 160,
-    available: true,
-    stats: { sessions: 203, students: 78, rating: 4.8 },
-    specialties: ["Product Strategy", "Career Transition", "Technical Product Management"]
-  },
-  {
-    id: 6,
-    name: "James Thompson",
-    title: "Security Engineer at Apple",
-    avatar: "JT",
-    rating: 4.9,
-    reviews: 89,
-    location: "Cupertino, CA",
-    bio: "Cybersecurity expert with focus on application security and secure coding practices. I help developers build security-first mindset.",
-    skills: ["Security", "Penetration Testing", "Secure Coding", "Cryptography", "Risk Assessment"],
-    hourlyRate: 170,
-    available: true,
-    stats: { sessions: 145, students: 56, rating: 4.9 },
-    specialties: ["Application Security", "Secure Development", "Security Architecture"]
-  }
-];
+// real mentors will be fetched from backend
 
 const Mentors: React.FC = () => {
   const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
-  const [filteredMentors, setFilteredMentors] = useState(mockMentors);
+  const [filteredMentors, setFilteredMentors] = useState<any[]>([]);
+  const [allMentors, setAllMentors] = useState<any[]>([]);
   const [messageModal, setMessageModal] = useState<{
     isOpen: boolean;
     mentorName: string;
@@ -463,6 +373,7 @@ const Mentors: React.FC = () => {
     mentorName: string;
     mentorAvatar: string;
     hourlyRate: number;
+    sessionId?: string;
   }>({
     isOpen: false,
     mentorName: '',
@@ -473,18 +384,38 @@ const Mentors: React.FC = () => {
   const handleSearch = (query: string) => {
     setSearchQuery(query);
     if (query.trim() === '') {
-      setFilteredMentors(mockMentors);
+      setFilteredMentors(allMentors);
     } else {
-      const filtered = mockMentors.filter(mentor =>
-        mentor.name.toLowerCase().includes(query.toLowerCase()) ||
-        mentor.title.toLowerCase().includes(query.toLowerCase()) ||
-        mentor.bio.toLowerCase().includes(query.toLowerCase()) ||
-        mentor.skills.some(skill => skill.toLowerCase().includes(query.toLowerCase())) ||
-        mentor.location.toLowerCase().includes(query.toLowerCase())
-      );
+      const filtered = allMentors.filter((entry: any) => {
+        const m = entry.mentor;
+        return (
+          m.name?.toLowerCase().includes(query.toLowerCase()) ||
+          m.title?.toLowerCase().includes(query.toLowerCase()) ||
+          m.bio?.toLowerCase().includes(query.toLowerCase()) ||
+          (m.skills || []).some((skill: string) => skill.toLowerCase().includes(query.toLowerCase())) ||
+          m.location?.toLowerCase().includes(query.toLowerCase())
+        );
+      });
       setFilteredMentors(filtered);
     }
   };
+
+  const BACKEND = (import.meta as any).env?.VITE_BACKEND_URL || 'http://localhost:5000';
+
+  const fetchMentors = async () => {
+    try {
+      const res = await fetch(`${BACKEND}/api/mentors`, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
+      const data = await res.json();
+      if (data.success) {
+        setAllMentors(data.mentors);
+        setFilteredMentors(data.mentors);
+      }
+    } catch (err) {
+      console.error('Fetch mentors error', err);
+    }
+  };
+
+  React.useEffect(() => { fetchMentors(); }, []);
 
   const renderStars = (rating: number) => {
     return Array.from({ length: 5 }, (_, index) => (
@@ -524,89 +455,81 @@ const Mentors: React.FC = () => {
           </SearchAndFilters>
 
         <MentorsGrid>
-          {filteredMentors.map((mentor) => (
-            <Link 
-              key={mentor.id} 
-              to={`/mentors/${mentor.id}`} 
-              style={{ textDecoration: 'none', color: 'inherit' }}
-            >
-              <MentorCard
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3 }}
-                whileHover={{ y: -5 }}
-              >
+          {filteredMentors.map((entry: any) => {
+            const mentor = entry.mentor;
+            const sessions = entry.sessions || [];
+            return (
+              <MentorCard key={mentor._id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} whileHover={{ y: -5 }}>
                 <MentorHeader>
-                  <MentorAvatar>
-                    {mentor.avatar}
-                    <OnlineIndicator />
-                  </MentorAvatar>
+                  <MentorAvatar>{mentor.avatar || (mentor.name ? mentor.name.charAt(0) : 'M')}<OnlineIndicator /></MentorAvatar>
                 </MentorHeader>
 
                 <MentorInfo>
                   <MentorName>{mentor.name}</MentorName>
                   <MentorTitle>{mentor.title}</MentorTitle>
-                  
                   <MentorRating>
-                    <RatingStars>
-                      {renderStars(mentor.rating)}
-                    </RatingStars>
-                    <RatingText>{mentor.rating} ({mentor.reviews} reviews)</RatingText>
+                    <RatingText>{mentor.hourlyRate ? `$${mentor.hourlyRate}/hr` : ''}</RatingText>
                   </MentorRating>
-
-                  <MentorLocation>
-                    <MapPin size={14} />
-                    {mentor.location}
-                  </MentorLocation>
+                  <MentorLocation><MapPin size={14} />{mentor.location}</MentorLocation>
                 </MentorInfo>
 
                 <MentorBio>{mentor.bio}</MentorBio>
 
                 <MentorSkills>
-                  {mentor.skills.slice(0, 3).map((skill, index) => (
-                    <Skill key={index}>{skill}</Skill>
-                  ))}
-                  {mentor.skills.length > 3 && (
-                    <Skill>+{mentor.skills.length - 3} more</Skill>
-                  )}
+                  {(mentor.skills || []).slice(0,3).map((skill: string, index: number) => <Skill key={index}>{skill}</Skill>)}
+                  {(mentor.skills || []).length > 3 && <Skill>+{mentor.skills.length - 3} more</Skill>}
                 </MentorSkills>
 
+                {/* Sessions list */}
+                {sessions.length > 0 && (
+                  <div style={{ marginBottom: '12px' }}>
+                    <strong>Upcoming Sessions</strong>
+                    <div style={{ marginTop: 8, display: 'grid', gap: 8 }}>
+                      {sessions.map((s: any) => (
+                        <div key={s._id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 8, background: '#fafafa', borderRadius: 8 }}>
+                          <div>
+                            <div style={{ fontWeight: 600 }}>{s.topic}</div>
+                            <div style={{ color: '#666' }}>{new Date(s.date).toLocaleString()} • {s.duration} min</div>
+                          </div>
+                          <div style={{ display: 'flex', gap: 8 }}>
+                            {user?.role === 'student' ? (
+                              <ContactButton $variant="primary" onClick={() => setBookingModal({ isOpen: true, mentorName: mentor.name, mentorAvatar: mentor.name.charAt(0), hourlyRate: s.price, sessionId: s._id })}>
+                                <Video size={16} /> Book
+                              </ContactButton>
+                            ) : null}
+                            {user?.role === 'tutor' && user._id === mentor._id && (
+                              <ContactButton $variant="secondary" onClick={async () => {
+                                // cancel session
+                                try {
+                                  const res = await fetch(`${BACKEND}/api/sessions/${s._id}/cancel`, {
+                                    method: 'PATCH',
+                                    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                                  });
+                                  const d = await res.json();
+                                  if (d.success) fetchMentors(); else alert(d.message || 'Failed');
+                                } catch (err) { console.error(err); alert('Failed'); }
+                              }}>
+                                Cancel
+                              </ContactButton>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <MentorActions>
-                  <ContactButton 
-                    $variant="primary"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setMessageModal({
-                        isOpen: true,
-                        mentorName: mentor.name,
-                        mentorAvatar: mentor.name.charAt(0)
-                      });
-                    }}
-                  >
-                    <MessageCircle size={16} />
-                    Message
+                  <ContactButton $variant="primary" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setMessageModal({ isOpen: true, mentorName: mentor.name, mentorAvatar: mentor.name.charAt(0) }); }}>
+                    <MessageCircle size={16} /> Message
                   </ContactButton>
-                  <ContactButton 
-                    $variant="secondary"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setBookingModal({
-                        isOpen: true,
-                        mentorName: mentor.name,
-                        mentorAvatar: mentor.name.charAt(0),
-                        hourlyRate: mentor.hourlyRate
-                      });
-                    }}
-                  >
-                    <Video size={16} />
-                    Book Call
+                  <ContactButton $variant="secondary" onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (sessions && sessions.length) { setBookingModal({ isOpen: true, mentorName: mentor.name, mentorAvatar: mentor.name.charAt(0), hourlyRate: sessions[0].price, sessionId: sessions[0]._id }); } else { setBookingModal({ isOpen: true, mentorName: mentor.name, mentorAvatar: mentor.name.charAt(0), hourlyRate: mentor.hourlyRate || 0, sessionId: undefined }); } }}>
+                    <Video size={16} /> Book Call
                   </ContactButton>
                 </MentorActions>
               </MentorCard>
-            </Link>
-          ))}
+            );
+          })}
         </MentorsGrid>
       </MentorsContent>
 
@@ -621,10 +544,11 @@ const Mentors: React.FC = () => {
       {/* Session Booking Modal */}
       <SessionBookingModal
         isOpen={bookingModal.isOpen}
-        onClose={() => setBookingModal({ isOpen: false, mentorName: '', mentorAvatar: '', hourlyRate: 0 })}
+        onClose={() => { setBookingModal({ isOpen: false, mentorName: '', mentorAvatar: '', hourlyRate: 0 }); fetchMentors(); }}
         mentorName={bookingModal.mentorName}
         mentorAvatar={bookingModal.mentorAvatar}
         hourlyRate={bookingModal.hourlyRate}
+        sessionId={bookingModal.sessionId}
       />
     </MentorsContainer>
   );
