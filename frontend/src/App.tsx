@@ -14,6 +14,7 @@ import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import Profile from './pages/Profile';
 import AskZone from './pages/AskZone';
+import Sessions from './pages/Sessions';
 import AnswerZone from './pages/AnswerZone';
 import Mentors from './pages/Mentors';
 import Freelance from './pages/Freelance';
@@ -139,7 +140,7 @@ function App() {
                     path="/sessions"
                     element={
                       <ProtectedRoute>
-                        <div>Sessions Component - Coming Soon</div>
+                        <Sessions />
                       </ProtectedRoute>
                     }
                   />
