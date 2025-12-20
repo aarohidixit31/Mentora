@@ -7,8 +7,18 @@ import path from "path";
 import dotenv from "dotenv";
 import { fileURLToPath } from "url";
 
+// ROUTES
+import authRoutes from "./routes/auth.js";
+import userRoutes from "./routes/users.js";
+import doubtRoutes from "./routes/doubts.js";
+import mentorRoutes from "./routes/mentors.js";
+import freelanceRoutes from "./routes/freelance.js";
+import adminRoutes from "./routes/admin.js";
+import sessionRoutes from "./routes/sessions.js";
+import googleRoutes from "./routes/google.js";
+
 // ================================
-// PATH FIX
+// FIX __dirname FOR ESM
 // ================================
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -60,21 +70,16 @@ mongoose
   .catch((err) => console.error(err));
 
 // ================================
-// ROUTES (ESM IMPORTS)
+// ROUTES
 // ================================
-import authRoutes from "./routes/auth.js";
-import userRoutes from "./routes/users.js";
-import doubtRoutes from "./routes/doubts.js";
-import mentorRoutes from "./routes/mentors.js";
-import freelanceRoutes from "./routes/freelance.js";
-import adminRoutes from "./routes/admin.js";
-
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/doubts", doubtRoutes);
 app.use("/api/mentors", mentorRoutes);
 app.use("/api/freelance", freelanceRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/sessions", sessionRoutes);
+app.use("/api/google", googleRoutes);
 
 // ================================
 // HEALTH
@@ -87,6 +92,4 @@ app.get("/api/health", (req, res) => {
 // START
 // ================================
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () =>
-  console.log(`🚀 Server running on ${PORT}`)
-);
+app.listen(PORT, () => console.log(`🚀 Server running on ${PORT}`));
