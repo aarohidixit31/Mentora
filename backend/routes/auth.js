@@ -1,3 +1,4 @@
+
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const { body, validationResult } = require('express-validator');
@@ -113,10 +114,10 @@ router.post('/login', [
     const { email, password } = req.body;
 
     const user = await User.findOne({ email }).select('+password');
-    if (!user || user.authProvider === 'google') {
+    if (!user) {
       return res.status(401).json({
         success: false,
-        message: 'Please login using Google'
+        message: 'Invalid credentials'
       });
     }
 
@@ -207,23 +208,23 @@ router.post('/google', async (req, res) => {
 // ============================
 // GET CURRENT USER
 // ============================
-router.get('/me', auth, async (req, res) => {
-  try {
-    const user = req.userDoc;
-    if (!user) {
-      return res.status(404).json({ success: false, message: 'User not found' });
-    }
+router.get("/me", auth, async (req, res) => {
+  const user = await User.findById(req.user.userId)
+    .select("-password");
 
-    res.json({ success: true, user });
-
-  } catch (error) {
-    console.error('Get profile error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error'
-    });
-  }
+  res.json({
+    success: true,
+    user: {
+      ...user.toObject(),
+      google:
+        user.google && Object.keys(user.google).length > 0
+          ? user.google
+          : null,
+    },
+  });
 });
+
+
 
 // ============================
 // REFRESH TOKEN

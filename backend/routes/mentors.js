@@ -1,30 +1,28 @@
 const express = require('express');
+const User = require('../models/User');
+const Session = require('../models/Session');
 const { auth } = require('../middleware/auth');
 
 const router = express.Router();
 
-// Placeholder routes for mentorship functionality
-// These will be implemented as part of the mentorship feature
-
 // @route   GET /api/mentors
-// @desc    Get all mentors (placeholder)
+// @desc    Get all mentors and their active sessions
 // @access  Private
-router.get('/', auth, (req, res) => {
-  res.json({
-    success: true,
-    message: 'Mentors API - Coming Soon',
-    mentors: []
-  });
-});
+router.get('/', auth, async (req, res) => {
+  try {
+    const mentors = await User.find({ role: 'tutor' }).select('name title bio avatar hourlyRate skills location');
 
-// @route   POST /api/mentors/sessions
-// @desc    Book a mentorship session (placeholder)
-// @access  Private
-router.post('/sessions', auth, (req, res) => {
-  res.json({
-    success: true,
-    message: 'Book session functionality - Coming Soon'
-  });
+    // For each mentor, fetch active sessions
+    const mentorData = await Promise.all(mentors.map(async (m) => {
+      const sessions = await Session.find({ mentor: m._id, status: 'active' }).sort({ date: 1 });
+      return { mentor: m, sessions };
+    }));
+
+    res.json({ success: true, mentors: mentorData });
+  } catch (error) {
+    console.error('Get mentors error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
 });
 
 module.exports = router;
