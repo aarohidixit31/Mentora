@@ -20,6 +20,11 @@ interface User {
   xp: number;
   level: number;
   profileCompletion?: number;
+   google?: {
+    accessToken?: string;
+    refreshToken?: string;
+    expiryDate?: number;
+  };
 }
 
 interface AuthState {
@@ -43,6 +48,7 @@ interface AuthContextType extends AuthState {
   logout: () => void;
   updateUser: (userData: Partial<User>) => void;
   refreshToken: () => Promise<void>;
+   refreshUser: () => Promise<void>;
 }
 
 /* ============================
@@ -161,6 +167,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     checkAuth();
   }, []);
 
+
   /* ============================
      LOGIN
   ============================ */
@@ -263,6 +270,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const refreshUser = async () => {
+  try {
+    const response = await authAPI.getProfile();
+
+    if (response.data.success) {
+      dispatch({
+        type: "UPDATE_USER",
+        payload: response.data.user,
+      });
+    }
+  } catch (error) {
+    console.error("Failed to refresh user:", error);
+  }
+};
+
   return (
     <AuthContext.Provider
       value={{
@@ -273,6 +295,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         logout,
         updateUser,
         refreshToken,
+        refreshUser, 
       }}
     >
       {children}
