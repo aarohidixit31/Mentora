@@ -10,7 +10,7 @@ const router = express.Router();
 // @access  Private
 router.get('/profile', auth, async (req, res) => {
   try {
-    const user = await User.findById(req.user.userId);
+    const user = req.userDoc;
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -87,7 +87,7 @@ router.put('/profile', [
     });
 
     const user = await User.findByIdAndUpdate(
-      req.user.userId,
+      req.userDoc._id,
       { $set: updates },
       { new: true, runValidators: true }
     );
@@ -153,7 +153,7 @@ router.put('/tutor-profile', [
     if (availability) updateData['tutorProfile.availability'] = availability;
 
     const user = await User.findByIdAndUpdate(
-      req.user.userId,
+      req.userDoc._id,
       { $set: updateData },
       { new: true, runValidators: true }
     );
@@ -212,7 +212,7 @@ router.put('/freelancer-profile', [
     if (services) updateData['freelancerProfile.services'] = services;
 
     const user = await User.findByIdAndUpdate(
-      req.user.userId,
+      req.userDoc._id,
       { $set: updateData },
       { new: true, runValidators: true }
     );
@@ -254,15 +254,10 @@ router.get('/search', auth, async (req, res) => {
     }
 
     const query = {
-      $and: [
-        { isApproved: true },
-        {
-          $or: [
-            { name: { $regex: q, $options: 'i' } },
-            { skills: { $in: [new RegExp(q, 'i')] } },
-            { 'tutorProfile.expertise': { $in: [new RegExp(q, 'i')] } }
-          ]
-        }
+      $or: [
+        { name: { $regex: q, $options: 'i' } },
+        { skills: { $in: [new RegExp(q, 'i')] } },
+        { 'tutorProfile.expertise': { $in: [new RegExp(q, 'i')] } }
       ]
     };
 
@@ -304,7 +299,7 @@ router.get('/leaderboard', auth, async (req, res) => {
   try {
     const { limit = 10 } = req.query;
 
-    const users = await User.find({ isApproved: true })
+    const users = await User.find()
       .select('name avatar xp level badges stats role')
       .sort({ xp: -1 })
       .limit(parseInt(limit));
@@ -337,12 +332,9 @@ router.post('/add-xp', auth, async (req, res) => {
       });
     }
 
-    const user = await User.findById(req.user.userId);
+    const user = req.userDoc;
     if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found'
-      });
+      return res.status(404).json({ success: false, message: 'User not found' });
     }
 
     const xpResult = user.addXP(points);

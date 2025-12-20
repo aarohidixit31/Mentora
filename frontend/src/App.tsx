@@ -14,6 +14,7 @@ import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import Profile from './pages/Profile';
 import AskZone from './pages/AskZone';
+import AnswerZone from './pages/AnswerZone';
 import Mentors from './pages/Mentors';
 import Freelance from './pages/Freelance';
 import Admin from './pages/Admin';
@@ -67,6 +68,14 @@ function App() {
                     element={
                       <ProtectedRoute>
                         <AskZone />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/answer-zone"
+                    element={
+                      <ProtectedRoute requiredRole="tutor">
+                        <AnswerZone />
                       </ProtectedRoute>
                     }
                   />

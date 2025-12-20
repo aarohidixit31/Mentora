@@ -39,10 +39,7 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
-    isApproved: {
-      type: Boolean,
-      default: true,
-    },
+    // `isApproved` removed - approval flow disabled
     xp: {
       type: Number,
       default: 0,

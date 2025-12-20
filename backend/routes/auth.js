@@ -62,8 +62,7 @@ router.post('/register', [
       email,
       password,
       role,
-      authProvider: 'local',
-      isApproved: role === 'student'
+      authProvider: 'local'
     });
 
     await user.save();
@@ -129,12 +128,6 @@ router.post('/login', [
       });
     }
 
-    if (!user.isApproved && user.role !== 'student') {
-      return res.status(403).json({
-        success: false,
-        message: 'Your account is pending approval. Please wait for admin approval.'
-      });
-    }
 
     const token = generateToken(user._id);
 
@@ -189,7 +182,7 @@ router.post('/google', async (req, res) => {
         authProvider: 'google',
         role: 'student',
         isVerified: true,
-        isApproved: true
+        
       });
     }
 
@@ -216,18 +209,12 @@ router.post('/google', async (req, res) => {
 // ============================
 router.get('/me', auth, async (req, res) => {
   try {
-    const user = await User.findById(req.user.userId);
+    const user = req.userDoc;
     if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found'
-      });
+      return res.status(404).json({ success: false, message: 'User not found' });
     }
 
-    res.json({
-      success: true,
-      user
-    });
+    res.json({ success: true, user });
 
   } catch (error) {
     console.error('Get profile error:', error);
@@ -243,12 +230,9 @@ router.get('/me', auth, async (req, res) => {
 // ============================
 router.post('/refresh', auth, async (req, res) => {
   try {
-    const user = await User.findById(req.user.userId);
+    const user = req.userDoc;
     if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found'
-      });
+      return res.status(404).json({ success: false, message: 'User not found' });
     }
 
     const token = generateToken(user._id);
@@ -267,6 +251,9 @@ router.post('/refresh', auth, async (req, res) => {
     });
   }
 });
+
+// Note: unified `/me` route above returns the full `user` from `req.userDoc`
+
 
 // ============================
 // LOGOUT

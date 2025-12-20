@@ -1,120 +1,80 @@
-const jwt = require('jsonwebtoken');
-const User = require('../models/User');
+const jwt = require("jsonwebtoken");
+const User = require("../models/User");
 
-// Authentication middleware
+/* ============================
+   AUTH MIDDLEWARE
+============================ */
 const auth = async (req, res, next) => {
   try {
-    // Get token from header
-    const authHeader = req.header('Authorization');
-    
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    const authHeader = req.header("Authorization");
+
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return res.status(401).json({
         success: false,
-        message: 'No token provided, authorization denied'
+        message: "No token provided",
       });
     }
 
-    // Extract token
-    const token = authHeader.substring(7); 
+    const token = authHeader.split(" ")[1];
 
-    // Verify token
-    const decoded = jwt.verify(token, process.env);
-    
-    // Check if user still exists
-    const user = await User.findById(decoded.userId);
-    if (!user) { 
+    // ✅ FIX: correct secret
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    const user = await User.findById(decoded.userId).select("-password");
+    if (!user) {
       return res.status(401).json({
         success: false,
-        message: 'Token is no longer valid'
+        message: "User not found",
       });
     }
 
-    // Check if user is approved (for non-students)
-    if (!user.isApproved && usJWT_SECRETer.role !== 'student') {
-      return res.status(403).json({
-        success: false,
-        message: 'Account pending approval'
-      });
-    }
+    // No admin approval required — allow all verified users to proceed
 
-    // Add user info to request
-    req.user = {
-      userId: decoded.userId,
-      role: user.role,
-      isApproved: user.isApproved
-    };
-
+    // Attach a compact `req.user` with `userId` (used across routes)
+    // and keep the full user document on `req.userDoc` for handlers
+    req.user = { userId: user._id, role: user.role };
+    req.userDoc = user;
     next();
-
   } catch (error) {
-    if (error.name === 'JsonWebTokenError') {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid token'
-      });
-    }
-    
-    if (error.name === 'TokenExpiredError') {
-      return res.status(401).json({
-        success: false,
-        message: 'Token expired'
-      });
-    }
-
-    console.error('Auth middleware error:', error);
-    res.status(500).json({
+    console.error("Auth middleware error:", error.message);
+    return res.status(401).json({
       success: false,
-      message: 'Server error in authentication'
+      message: "Invalid or expired token",
     });
   }
 };
 
-// Role-based authorization middleware
-const authorize = (...roles) => {
-  return (req, res, next) => {
-    if (!req.user) {
-      return res.status(401).json({
-        success: false,
-        message: 'Authentication required'
-      });
-    }
-
-    if (!roles.includes(req.user.role)) {
-      return res.status(403).json({
-        success: false,
-        message: 'Access denied. Insufficient permissions.'
-      });
-    }
-
-    next();
-  };
+/* ============================
+   ROLE-BASED AUTH
+============================ */
+const authorize = (...roles) => (req, res, next) => {
+  if (!req.user || !roles.includes(req.user.role)) {
+    return res.status(403).json({
+      success: false,
+      message: "Access denied",
+    });
+  }
+  next();
 };
 
-// Admin only middleware
 const adminOnly = (req, res, next) => {
-  if (!req.user || req.user.role !== 'admin') {
+  if (!req.user || req.user.role !== "admin") {
     return res.status(403).json({
       success: false,
-      message: 'Access denied. Admin privileges required.'
+      message: "Admin access required",
     });
   }
   next();
 };
 
-// Approved users only middleware
 const approvedOnly = (req, res, next) => {
-  if (!req.user || (!req.user.isApproved && req.user.role !== 'student')) {
-    return res.status(403).json({
-      success: false,
-      message: 'Account approval required to access this resource'
-    });
-  }
-  next();
+  // Previously enforced admin approval; now allow all authenticated users.
+  return next();
 };
 
 module.exports = {
   auth,
   authorize,
   adminOnly,
-  approvedOnly
+  approvedOnly,
 };
