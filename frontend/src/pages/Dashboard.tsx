@@ -248,7 +248,7 @@ const Dashboard: React.FC = () => {
       case 'tutor':
         return [
           { icon: MessageCircle, title: 'Answer Questions', description: 'Help students learn', link: '/ask-zone', color: '#3B82F6' },
-          { icon: Users, title: 'My Students', description: 'Manage mentorships', link: '/mentors', color: '#10B981' },
+          { icon: Users, title: 'My Sessions', description: 'Manage your sessions', link: '/sessions', color: '#10B981' },
           { icon: Award, title: 'My Profile', description: 'Update your expertise', link: '/profile', color: '#8B5CF6' }
         ];
       case 'freelancer':
