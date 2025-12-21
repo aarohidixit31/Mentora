@@ -139,4 +139,24 @@ router.post("/", auth, async (req, res) => {
   }
 });
 
+
+router.post("/:id/book", auth, async (req, res) => {
+  const session = await Session.findById(req.params.id);
+  if (!session) {
+    return res.status(404).json({ success: false });
+  }
+
+  if (session.isBooked) {
+    return res.json({ success: false, message: "Already booked" });
+  }
+
+  session.isBooked = true;
+  await session.save();
+
+  res.json({
+    success: true,
+    meetLink: session.meetLink,
+  });
+});
+
 export default router;

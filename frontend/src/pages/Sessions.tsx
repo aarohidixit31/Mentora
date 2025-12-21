@@ -265,13 +265,14 @@ const Sessions: React.FC = () => {
       </Column>
 
       <SessionBookingModal
-        isOpen={showBooking}
-        onClose={() => setShowBooking(false)}
-        mentorName={bookingSession?.mentor?.name || ""}
-        mentorAvatar={bookingSession?.mentor?.avatar || ""}
-        hourlyRate={bookingSession?.price || 0}
-        sessionId={bookingSession?._id}
-      />
+  isOpen={!!bookingSession}
+  mentorName={bookingSession?.mentor?.name || ""}
+  mentorAvatar={bookingSession?.mentor?.avatar || ""}
+  session={bookingSession || undefined}
+  onClose={() => setBookingSession(null)}
+/>
+
+
     </Container>
   );
 };
