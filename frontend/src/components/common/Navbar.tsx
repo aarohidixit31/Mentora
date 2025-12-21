@@ -335,7 +335,7 @@ const Navbar: React.FC = () => {
       case 'tutor':
         return [
           ...baseItems,
-          { path: '/ask-zone', label: 'Answer Zone', icon: MessageCircle },
+          { path: '/answer-zone', label: 'Answer Zone', icon: MessageCircle },
           { path: '/sessions', label: 'My Sessions', icon: Users },
         ];
       case 'freelancer':

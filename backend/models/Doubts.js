@@ -1,6 +1,18 @@
 import mongoose from "mongoose";
 
-const doubtSchema = new mongoose.Schema(
+const AnswerSchema = new mongoose.Schema(
+  {
+    content: { type: String, required: true },
+    answeredBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+  },
+  { timestamps: true }
+);
+
+const DoubtSchema = new mongoose.Schema(
   {
     title: {
       type: String,
@@ -11,32 +23,18 @@ const doubtSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-    tags: [String],
+    tags: {
+      type: [String],
+      default: [],
+    },
     askedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: true,
+      required: true, // ✅ ONLY required user field
     },
-
-    role: {
-      type: String,
-      enum: ["student", "tutor"],
-      required: true,
-    },
-
-    answers: [
-      {
-        content: { type: String, required: true },
-        answeredBy: {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: 'User',
-        },
-        createdAt: { type: Date, default: Date.now },
-        updatedAt: { type: Date },
-      },
-    ],
+    answers: [AnswerSchema],
   },
   { timestamps: true }
 );
 
-export default mongoose.model("Doubt", doubtSchema);
+export default mongoose.model("Doubt", DoubtSchema);

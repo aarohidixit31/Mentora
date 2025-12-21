@@ -33,10 +33,6 @@ const AskButton = styled.button`
   padding: 10px 16px;
   border-radius: 6px;
   cursor: pointer;
-
-  &:hover {
-    background: #1d4ed8;
-  }
 `;
 
 const SearchBox = styled.div`
@@ -62,7 +58,6 @@ const QuestionCard = styled.div`
 const QuestionTitle = styled.h3`
   font-size: 18px;
   font-weight: 600;
-  margin-bottom: 6px;
 `;
 
 const QuestionContent = styled.p`
@@ -70,14 +65,6 @@ const QuestionContent = styled.p`
   margin-bottom: 10px;
 `;
 
-const AnswerButton = styled.button`
-  background: #10b981;
-  color: white;
-  border: none;
-  padding: 8px 12px;
-  border-radius: 6px;
-  cursor: pointer;
-`;
 const Meta = styled.div`
   font-size: 13px;
   color: #64748b;
@@ -148,7 +135,10 @@ interface Doubt {
   answers?: {
     _id: string;
     content: string;
-    answeredBy?: { _id?: string; name: string; role: string };
+    answeredBy?: {
+      name: string;
+      role: string;
+    };
     createdAt: string;
     updatedAt?: string;
   }[];
@@ -167,14 +157,20 @@ const AskZone: React.FC = () => {
     content: "",
     tags: "",
   });
-  const [showAnswerModal, setShowAnswerModal] = useState(false);
-  const [activeDoubt, setActiveDoubt] = useState<Doubt | null>(null);
-  const [answerText, setAnswerText] = useState("");
-  const [editingAnswerId, setEditingAnswerId] = useState<string | null>(null);
 
- const BACKEND_URL =
-  (import.meta as any).env?.VITE_BACKEND_URL || "http://localhost:5000";
+  const BACKEND_URL =
+    (import.meta as any).env?.VITE_BACKEND_URL || "http://localhost:5000";
 
+  /* ===================== SAFE JSON PARSER (FIX) ===================== */
+  const safeJson = async (res: Response) => {
+    const text = await res.text();
+    try {
+      return JSON.parse(text);
+    } catch {
+      console.error("❌ Non-JSON response:", text);
+      throw new Error("Server returned invalid response");
+    }
+  };
 
   /* ===================== FETCH DOUBTS ===================== */
   const fetchDoubts = async () => {
@@ -184,12 +180,14 @@ const AskZone: React.FC = () => {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
       });
-      const data = await res.json();
+
+      const data = await safeJson(res);
+
       if (data.success) {
         setDoubts(data.doubts);
       }
     } catch (err) {
-      console.error("Failed to load doubts");
+      console.error("Failed to load doubts", err);
     }
   };
 
@@ -197,10 +195,12 @@ const AskZone: React.FC = () => {
     fetchDoubts();
   }, []);
 
-  /* ===================== POST DOUBT ===================== */
+  /* ===================== POST DOUBT (FIXED) ===================== */
   const handleSubmit = async () => {
-    console.log("POST DOUBT CLICKED", form);
-    if (!form.title || !form.content) return alert("Fill all fields");
+    if (!form.title || !form.content) {
+      alert("Fill all fields");
+      return;
+    }
 
     try {
       const res = await fetch(`${BACKEND_URL}/api/doubts`, {
@@ -219,22 +219,20 @@ const AskZone: React.FC = () => {
         }),
       });
 
-      const data = await res.json();
+      const data = await safeJson(res);
 
-      if (data.success) {
-        setShowModal(false);
-        setForm({ title: "", content: "", tags: "" });
-        fetchDoubts();
+      if (!res.ok) {
+        alert(data.message || "Failed to post doubt");
+        return;
       }
-    } catch (error: any) {
-  console.error("POST DOUBT ERROR:", error);
-  alert(
-    error?.response?.data?.message ||
-    error?.message ||
-    "Failed to post doubt"
-  );
-}
 
+      setShowModal(false);
+      setForm({ title: "", content: "", tags: "" });
+      fetchDoubts();
+    } catch (err: any) {
+      console.error("POST DOUBT ERROR:", err);
+      alert(err.message || "Failed to post doubt");
+    }
   };
 
   /* ===================== FILTER ===================== */
@@ -269,56 +267,42 @@ const AskZone: React.FC = () => {
           <QuestionTitle>{q.title}</QuestionTitle>
           <QuestionContent>{q.content}</QuestionContent>
           <div>
-            {q.tags?.map((tag) => (
+            {q.tags.map((tag) => (
               <Tag key={tag}>{tag}</Tag>
             ))}
           </div>
           <Meta>
-            Asked by {q.askedBy?.name} ({q.askedBy?.role}) • {" "}
+            Asked by {q.askedBy.name} ({q.askedBy.role}) •{" "}
             {new Date(q.createdAt).toLocaleString()}
           </Meta>
-
           {q.answers && q.answers.length > 0 && (
-            <div style={{ marginTop: 12 }}>
-              <strong>Answers:</strong>
-              {q.answers.map((a) => (
-                <div key={a._id} style={{ marginTop: 8, padding: 8, background: '#f3f4f6', borderRadius: 8 }}>
-                  <div style={{ fontWeight: 600 }}>{a.answeredBy?.name} ({a.answeredBy?.role})</div>
-                  <div style={{ fontSize: 14, color: '#374151' }}>{a.content}</div>
-                  <div style={{ fontSize: 12, color: '#6b7280' }}>
-                    {new Date(a.createdAt).toLocaleString()}
-                    {a.updatedAt ? ` • edited ${new Date(a.updatedAt).toLocaleString()}` : ''}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+  <div style={{ marginTop: 12 }}>
+    <strong>Answers:</strong>
 
-          {/* Show Answer or Edit button based on whether this tutor already answered */}
-          {user?.role === 'tutor' && (() => {
-            const userAnswer = q.answers?.find((a) => a.answeredBy?._id === user._id);
-            if (userAnswer) {
-              return (
-                <div style={{ marginTop: 12 }}>
-                  <AnswerButton onClick={() => { setActiveDoubt(q); setAnswerText(userAnswer.content); setEditingAnswerId(userAnswer._id); setShowAnswerModal(true); }}>
-                    Edit
-                  </AnswerButton>
-                </div>
-              );
-            }
+    {q.answers.map((a) => (
+      <div
+        key={a._id}
+        style={{
+          marginTop: 8,
+          padding: 10,
+          background: "#f1f5f9",
+          borderRadius: 8,
+        }}
+      >
+        <div style={{ fontWeight: 600 }}>
+          {a.answeredBy?.name} ({a.answeredBy?.role})
+        </div>
+        <div style={{ color: "#374151", marginTop: 4 }}>
+          {a.content}
+        </div>
+        <div style={{ fontSize: 12, color: "#6b7280", marginTop: 4 }}>
+          {new Date(a.createdAt).toLocaleString()}
+        </div>
+      </div>
+    ))}
+  </div>
+)}
 
-            if (!q.answers || q.answers.length === 0) {
-              return (
-                <div style={{ marginTop: 12 }}>
-                  <AnswerButton onClick={() => { setActiveDoubt(q); setAnswerText(''); setEditingAnswerId(null); setShowAnswerModal(true); }}>
-                    Answer
-                  </AnswerButton>
-                </div>
-              );
-            }
-
-            return null;
-          })()}
         </QuestionCard>
       ))}
 
@@ -350,58 +334,6 @@ const AskZone: React.FC = () => {
             <SubmitButton onClick={handleSubmit}>
               Post Doubt
             </SubmitButton>
-          </Modal>
-        </ModalOverlay>
-      )}
-
-      {showAnswerModal && activeDoubt && (
-        <ModalOverlay>
-          <Modal>
-            <h3>Answer Question</h3>
-            <p style={{ marginBottom: 8 }}>{activeDoubt.title}</p>
-            <TextArea value={answerText} onChange={(e) => setAnswerText(e.target.value)} />
-            <SubmitButton onClick={async () => {
-              if (!answerText.trim()) return alert('Write an answer');
-              try {
-                let res;
-                if (editingAnswerId) {
-                  res = await fetch(`${BACKEND_URL}/api/doubts/${activeDoubt._id}/answer/${editingAnswerId}`, {
-                    method: 'PUT',
-                    headers: {
-                      'Content-Type': 'application/json',
-                      Authorization: `Bearer ${localStorage.getItem('token')}`,
-                    },
-                    body: JSON.stringify({ content: answerText.trim() }),
-                  });
-                } else {
-                  res = await fetch(`${BACKEND_URL}/api/doubts/${activeDoubt._id}/answer`, {
-                    method: 'POST',
-                    headers: {
-                      'Content-Type': 'application/json',
-                      Authorization: `Bearer ${localStorage.getItem('token')}`,
-                    },
-                    body: JSON.stringify({ content: answerText.trim() }),
-                  });
-                }
-
-                const data = await res.json();
-                if (data.success) {
-                  setShowAnswerModal(false);
-                  setActiveDoubt(null);
-                  setAnswerText('');
-                  setEditingAnswerId(null);
-                  fetchDoubts();
-                } else {
-                  alert(data.message || 'Failed to post/edit answer');
-                }
-              } catch (err) {
-                console.error('Submit answer error', err);
-                alert('Failed to post/edit answer');
-              }
-            }}>{editingAnswerId ? 'Save Changes' : 'Submit Answer'}</SubmitButton>
-            <div style={{ marginTop: 8 }}>
-              <button onClick={() => setShowAnswerModal(false)}>Cancel</button>
-            </div>
           </Modal>
         </ModalOverlay>
       )}
