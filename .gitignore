@@ -5,3 +5,6 @@ node_modules
 .env.*
 frontend/.env
 frontend/.env.*
+.env
+.env.*
+!.env.example
