@@ -1,14 +1,16 @@
-import React, { useState } from 'react';
-import styled from 'styled-components';
-import { motion, AnimatePresence } from 'framer-motion';
-import { X, DollarSign, Clock, FileText, Link, Send } from 'lucide-react';
+import React, { useState } from "react";
+import styled from "styled-components";
+import { motion, AnimatePresence } from "framer-motion";
+import { X, DollarSign, Clock, FileText, Link, Send } from "lucide-react";
+
+/* ===================== TYPES ===================== */
 
 interface BidModalProps {
   isOpen: boolean;
   onClose: () => void;
+  projectId: string; // 🔥 REQUIRED
   projectTitle: string;
   projectBudget: { min: number; max: number };
-  onSubmitBid: (bidData: BidData) => void;
 }
 
 interface BidData {
@@ -18,12 +20,11 @@ interface BidData {
   portfolioLinks: string;
 }
 
+/* ===================== STYLES ===================== */
+
 const Modal = styled(motion.div)`
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0;
   background: rgba(0, 0, 0, 0.5);
   display: flex;
   align-items: center;
@@ -35,7 +36,7 @@ const Modal = styled(motion.div)`
 const ModalContent = styled(motion.div)`
   background: ${({ theme }) => theme.colors.white};
   border-radius: ${({ theme }) => theme.borderRadius.xl};
-  padding: ${({ theme }) => theme.spacing['2xl']};
+  padding: ${({ theme }) => theme.spacing["2xl"]};
   max-width: 600px;
   width: 100%;
   max-height: 90vh;
@@ -50,15 +51,9 @@ const ModalHeader = styled.div`
   gap: ${({ theme }) => theme.spacing.md};
 `;
 
-const ModalHeaderContent = styled.div`
-  flex: 1;
-`;
-
 const ModalTitle = styled.h2`
   font-size: ${({ theme }) => theme.fontSizes.xl};
   font-weight: ${({ theme }) => theme.fontWeights.bold};
-  color: ${({ theme }) => theme.colors.gray[900]};
-  margin-bottom: ${({ theme }) => theme.spacing.xs};
 `;
 
 const ProjectTitle = styled.p`
@@ -69,17 +64,8 @@ const ProjectTitle = styled.p`
 const CloseButton = styled.button`
   background: none;
   border: none;
-  color: ${({ theme }) => theme.colors.gray[500]};
   cursor: pointer;
-  padding: ${({ theme }) => theme.spacing.xs};
-  border-radius: ${({ theme }) => theme.borderRadius.md};
-  transition: all ${({ theme }) => theme.transitions.default};
-  flex-shrink: 0;
-
-  &:hover {
-    background: ${({ theme }) => theme.colors.gray[100]};
-    color: ${({ theme }) => theme.colors.gray[700]};
-  }
+  color: ${({ theme }) => theme.colors.gray[500]};
 `;
 
 const BudgetInfo = styled.div`
@@ -90,22 +76,6 @@ const BudgetInfo = styled.div`
   margin-bottom: ${({ theme }) => theme.spacing.xl};
 `;
 
-const BudgetLabel = styled.div`
-  font-size: ${({ theme }) => theme.fontSizes.sm};
-  color: ${({ theme }) => theme.colors.primary[700]};
-  font-weight: ${({ theme }) => theme.fontWeights.medium};
-  margin-bottom: ${({ theme }) => theme.spacing.xs};
-`;
-
-const BudgetRange = styled.div`
-  display: flex;
-  align-items: center;
-  gap: ${({ theme }) => theme.spacing.xs};
-  font-size: ${({ theme }) => theme.fontSizes.lg};
-  font-weight: ${({ theme }) => theme.fontWeights.bold};
-  color: ${({ theme }) => theme.colors.primary[600]};
-`;
-
 const FormGroup = styled.div`
   margin-bottom: ${({ theme }) => theme.spacing.lg};
 `;
@@ -113,143 +83,117 @@ const FormGroup = styled.div`
 const Label = styled.label`
   display: flex;
   align-items: center;
-  gap: ${({ theme }) => theme.spacing.xs};
-  font-weight: ${({ theme }) => theme.fontWeights.medium};
-  color: ${({ theme }) => theme.colors.gray[700]};
-  margin-bottom: ${({ theme }) => theme.spacing.xs};
+  gap: 6px;
+  font-weight: 500;
 `;
 
 const Input = styled.input`
   width: 100%;
-  padding: ${({ theme }) => theme.spacing.sm};
-  border: 1px solid ${({ theme }) => theme.colors.gray[300]};
-  border-radius: ${({ theme }) => theme.borderRadius.lg};
-  font-size: ${({ theme }) => theme.fontSizes.sm};
-  transition: all ${({ theme }) => theme.transitions.default};
-
-  &:focus {
-    outline: none;
-    border-color: ${({ theme }) => theme.colors.primary[500]};
-    box-shadow: 0 0 0 3px ${({ theme }) => theme.colors.primary[100]};
-  }
+  padding: 10px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
 `;
 
 const TextArea = styled.textarea`
   width: 100%;
-  padding: ${({ theme }) => theme.spacing.sm};
-  border: 1px solid ${({ theme }) => theme.colors.gray[300]};
-  border-radius: ${({ theme }) => theme.borderRadius.lg};
-  font-size: ${({ theme }) => theme.fontSizes.sm};
+  padding: 10px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
   min-height: 120px;
-  resize: vertical;
-  transition: all ${({ theme }) => theme.transitions.default};
-
-  &:focus {
-    outline: none;
-    border-color: ${({ theme }) => theme.colors.primary[500]};
-    box-shadow: 0 0 0 3px ${({ theme }) => theme.colors.primary[100]};
-  }
-`;
-
-const HelperText = styled.p`
-  font-size: ${({ theme }) => theme.fontSizes.xs};
-  color: ${({ theme }) => theme.colors.gray[500]};
-  margin-top: ${({ theme }) => theme.spacing.xs};
 `;
 
 const ModalFooter = styled.div`
   display: flex;
-  gap: ${({ theme }) => theme.spacing.md};
   justify-content: flex-end;
-  margin-top: ${({ theme }) => theme.spacing.xl};
-  padding-top: ${({ theme }) => theme.spacing.lg};
-  border-top: 1px solid ${({ theme }) => theme.colors.gray[200]};
+  gap: 12px;
+  margin-top: 24px;
 `;
 
-const CancelButton = styled.button`
-  background: ${({ theme }) => theme.colors.white};
-  color: ${({ theme }) => theme.colors.gray[700]};
-  border: 1px solid ${({ theme }) => theme.colors.gray[300]};
-  padding: ${({ theme }) => theme.spacing.sm} ${({ theme }) => theme.spacing.lg};
-  border-radius: ${({ theme }) => theme.borderRadius.lg};
-  font-weight: ${({ theme }) => theme.fontWeights.medium};
+const Button = styled.button<{ primary?: boolean }>`
+  padding: 10px 16px;
+  border-radius: 6px;
+  border: ${({ primary }) => (primary ? "none" : "1px solid #ccc")};
+  background: ${({ primary }) => (primary ? "#2563eb" : "#fff")};
+  color: ${({ primary }) => (primary ? "#fff" : "#333")};
   cursor: pointer;
-  transition: all ${({ theme }) => theme.transitions.default};
-
-  &:hover {
-    background: ${({ theme }) => theme.colors.gray[50]};
-    border-color: ${({ theme }) => theme.colors.gray[400]};
-  }
-`;
-
-const SubmitButton = styled.button`
-  display: flex;
-  align-items: center;
-  gap: ${({ theme }) => theme.spacing.xs};
-  background: ${({ theme }) => theme.colors.primary[500]};
-  color: white;
-  border: none;
-  padding: ${({ theme }) => theme.spacing.sm} ${({ theme }) => theme.spacing.lg};
-  border-radius: ${({ theme }) => theme.borderRadius.lg};
-  font-weight: ${({ theme }) => theme.fontWeights.medium};
-  cursor: pointer;
-  transition: all ${({ theme }) => theme.transitions.default};
-
-  &:hover {
-    background: ${({ theme }) => theme.colors.primary[600]};
-  }
 
   &:disabled {
-    background: ${({ theme }) => theme.colors.gray[300]};
+    opacity: 0.6;
     cursor: not-allowed;
   }
 `;
 
+/* ===================== COMPONENT ===================== */
+
 const BidModal: React.FC<BidModalProps> = ({
   isOpen,
   onClose,
+  projectId,
   projectTitle,
   projectBudget,
-  onSubmitBid
 }) => {
   const [bidForm, setBidForm] = useState<BidData>({
-    bidAmount: '',
-    timeline: '',
-    coverLetter: '',
-    portfolioLinks: ''
+    bidAmount: "",
+    timeline: "",
+    coverLetter: "",
+    portfolioLinks: "",
   });
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    setBidForm({
-      ...bidForm,
-      [e.target.name]: e.target.value
-    });
+  const BACKEND =
+    (import.meta as any).env?.VITE_BACKEND_URL || "http://localhost:5000";
+
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    setBidForm({ ...bidForm, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!bidForm.bidAmount || !bidForm.timeline || !bidForm.coverLetter) {
-      alert('Please fill in all required fields');
+      alert("Please fill all required fields");
       return;
     }
 
-    onSubmitBid(bidForm);
-    setBidForm({
-      bidAmount: '',
-      timeline: '',
-      coverLetter: '',
-      portfolioLinks: ''
-    });
-    onClose();
-  };
+    try {
+      const res = await fetch(
+        `${BACKEND}/api/freelance/${projectId}/bid`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+          body: JSON.stringify({
+            bidAmount: bidForm.bidAmount,
+            timeline: bidForm.timeline,
+            coverLetter: bidForm.coverLetter,
+            portfolioLinks: bidForm.portfolioLinks
+              .split("\n")
+              .map((l) => l.trim())
+              .filter(Boolean),
+          }),
+        }
+      );
 
-  const handleClose = () => {
-    setBidForm({
-      bidAmount: '',
-      timeline: '',
-      coverLetter: '',
-      portfolioLinks: ''
-    });
-    onClose();
+      const data = await res.json();
+
+      if (!res.ok) {
+        alert(data.message || "Failed to submit proposal");
+        return;
+      }
+
+      alert("✅ Proposal submitted successfully");
+      setBidForm({
+        bidAmount: "",
+        timeline: "",
+        coverLetter: "",
+        portfolioLinks: "",
+      });
+      onClose();
+    } catch (err) {
+      console.error(err);
+      alert("Failed to submit proposal");
+    }
   };
 
   return (
@@ -259,7 +203,7 @@ const BidModal: React.FC<BidModalProps> = ({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          onClick={handleClose}
+          onClick={onClose}
         >
           <ModalContent
             initial={{ scale: 0.9, opacity: 0 }}
@@ -268,92 +212,68 @@ const BidModal: React.FC<BidModalProps> = ({
             onClick={(e) => e.stopPropagation()}
           >
             <ModalHeader>
-              <ModalHeaderContent>
+              <div>
                 <ModalTitle>Submit Proposal</ModalTitle>
                 <ProjectTitle>{projectTitle}</ProjectTitle>
-              </ModalHeaderContent>
-              <CloseButton onClick={handleClose}>
+              </div>
+              <CloseButton onClick={onClose}>
                 <X size={20} />
               </CloseButton>
             </ModalHeader>
 
             <BudgetInfo>
-              <BudgetLabel>Client Budget Range</BudgetLabel>
-              <BudgetRange>
-                <DollarSign size={18} />
-                ${projectBudget.min.toLocaleString()} - ${projectBudget.max.toLocaleString()}
-              </BudgetRange>
+              <strong>Budget:</strong> ₹{projectBudget.min} – ₹{projectBudget.max}
             </BudgetInfo>
 
             <FormGroup>
               <Label>
-                <DollarSign size={16} />
-                Your Bid Amount *
+                <DollarSign size={16} /> Bid Amount *
               </Label>
               <Input
-                type="text"
                 name="bidAmount"
                 value={bidForm.bidAmount}
-                onChange={handleInputChange}
-                placeholder="e.g. $2500"
+                onChange={handleChange}
               />
-              <HelperText>Enter your proposed price for this project</HelperText>
             </FormGroup>
 
             <FormGroup>
               <Label>
-                <Clock size={16} />
-                Delivery Timeline *
+                <Clock size={16} /> Timeline *
               </Label>
               <Input
-                type="text"
                 name="timeline"
                 value={bidForm.timeline}
-                onChange={handleInputChange}
-                placeholder="e.g. 4-6 weeks"
+                onChange={handleChange}
               />
-              <HelperText>How long will it take you to complete this project?</HelperText>
             </FormGroup>
 
             <FormGroup>
               <Label>
-                <FileText size={16} />
-                Cover Letter *
+                <FileText size={16} /> Cover Letter *
               </Label>
               <TextArea
                 name="coverLetter"
                 value={bidForm.coverLetter}
-                onChange={handleInputChange}
-                placeholder="Introduce yourself and explain why you're the best fit for this project. Highlight your relevant experience and approach..."
+                onChange={handleChange}
               />
-              <HelperText>Explain your approach and why you're the right choice for this project</HelperText>
             </FormGroup>
 
             <FormGroup>
               <Label>
-                <Link size={16} />
-                Portfolio Links
+                <Link size={16} /> Portfolio Links
               </Label>
               <TextArea
                 name="portfolioLinks"
                 value={bidForm.portfolioLinks}
-                onChange={handleInputChange}
-                placeholder="Share links to relevant work samples, GitHub repositories, or portfolio pieces (one per line)"
+                onChange={handleChange}
               />
-              <HelperText>Optional: Include links to showcase your relevant work</HelperText>
             </FormGroup>
 
             <ModalFooter>
-              <CancelButton onClick={handleClose}>
-                Cancel
-              </CancelButton>
-              <SubmitButton
-                onClick={handleSubmit}
-                disabled={!bidForm.bidAmount || !bidForm.timeline || !bidForm.coverLetter}
-              >
-                <Send size={16} />
-                Submit Proposal
-              </SubmitButton>
+              <Button onClick={onClose}>Cancel</Button>
+              <Button primary onClick={handleSubmit}>
+                <Send size={16} /> Submit Proposal
+              </Button>
             </ModalFooter>
           </ModalContent>
         </Modal>
