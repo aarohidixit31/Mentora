@@ -128,7 +128,7 @@ interface Doubt {
   title: string;
   content: string;
   tags: string[];
-  askedBy: {
+  askedBy?: {
     name: string;
     role: string;
   };
@@ -272,7 +272,7 @@ const AskZone: React.FC = () => {
             ))}
           </div>
           <Meta>
-            Asked by {q.askedBy.name} ({q.askedBy.role}) •{" "}
+            Asked by {q.askedBy?.name || "Anonymous"} ({q.askedBy?.role || "User"}) •{" "}
             {new Date(q.createdAt).toLocaleString()}
           </Meta>
           {q.answers && q.answers.length > 0 && (

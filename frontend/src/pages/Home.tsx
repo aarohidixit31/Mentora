@@ -398,7 +398,7 @@ const Home: React.FC = () => {
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
               >
-                <PrimaryButton to="/register">
+                <PrimaryButton to="/dashboard">
                   <motion.span
                     initial={{ x: 0 }}
                     whileHover={{ x: 5 }}
@@ -415,14 +415,14 @@ const Home: React.FC = () => {
                   </motion.div>
                 </PrimaryButton>
               </motion.div>
-              <motion.div
+              {/* <motion.div
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
               >
                 <SecondaryButton to="/ask-zone">
                   Explore Ask Zone
                 </SecondaryButton>
-              </motion.div>
+              </motion.div> */}
             </CTAButtons>
           </motion.div>
         </HeroSection>

@@ -4,12 +4,11 @@ import { auth } from "../middleware/auth.js";
 
 const router = express.Router();
 
-/* ===================== GET ALL DOUBTS ===================== */
 router.get("/", auth, async (req, res) => {
   try {
     const doubts = await Doubt.find()
       .populate("askedBy", "name role")
-      .populate("answers.answeredBy", "name role") // ✅ THIS IS THE KEY
+      .populate("answers.answeredBy", "name role")
       .sort({ createdAt: -1 });
 
     res.json({
@@ -26,7 +25,6 @@ router.get("/", auth, async (req, res) => {
 });
 
 
-/* ===================== POST DOUBT ===================== */
 router.post("/", auth, async (req, res) => {
   try {
     const { title, content, tags } = req.body;
@@ -42,7 +40,7 @@ router.post("/", auth, async (req, res) => {
       title,
       content,
       tags: tags || [],
-      askedBy: req.user.userId, // ✅ FIX IS HERE
+      askedBy: req.user.userId,
     });
 
     res.status(201).json({
@@ -54,6 +52,52 @@ router.post("/", auth, async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to post doubt",
+    });
+  }
+});
+
+
+router.post("/:id/answer", auth, async (req, res) => {
+  try {
+    if (req.user.role !== "tutor") {
+      return res.status(403).json({
+        success: false,
+        message: "Only tutors can answer doubts",
+      });
+    }
+
+    const { content } = req.body;
+    if (!content) {
+      return res.status(400).json({
+        success: false,
+        message: "Answer content is required",
+      });
+    }
+
+    const doubt = await Doubt.findById(req.params.id);
+    if (!doubt) {
+      return res.status(404).json({
+        success: false,
+        message: "Doubt not found",
+      });
+    }
+
+    doubt.answers.push({
+      content,
+      answeredBy: req.user.userId,
+    });
+
+    await doubt.save();
+
+    res.status(201).json({
+      success: true,
+      message: "Answer posted successfully",
+    });
+  } catch (err) {
+    console.error("POST ANSWER ERROR:", err);
+    res.status(500).json({
+      success: false,
+      message: "Failed to post answer",
     });
   }
 });
