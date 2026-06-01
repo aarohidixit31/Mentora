@@ -13,9 +13,7 @@ const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 // JWT HELPER
 // ============================
 const generateToken = (userId) => {
-  return jwt.sign({ userId }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRE || '7d'
-  });
+  return jwt.sign({ userId }, process.env.JWT_SECRET);
 };
 
 // ============================
