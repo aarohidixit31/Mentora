@@ -11,6 +11,7 @@ const sessionSchema = new mongoose.Schema({
   googleEventId: String,
 
   isBooked: { type: Boolean, default: false }, // ✅ IMPORTANT
+  students: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }], // Track students who booked
 
   createdAt: { type: Date, default: Date.now },
 });

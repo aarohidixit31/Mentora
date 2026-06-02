@@ -68,6 +68,66 @@ const TextArea = styled.textarea`
   border-radius: 6px;
 `;
 
+const SessionItem = styled.div`
+  background: #f5f7fa;
+  padding: 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s;
+
+  &:hover {
+    background: #eef2f7;
+  }
+`;
+
+const SessionHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+`;
+
+const StudentList = styled.div`
+  margin-top: 12px;
+  padding: 12px;
+  background: white;
+  border-radius: 6px;
+  border-left: 3px solid #2563eb;
+`;
+
+const StudentItem = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid #eee;
+
+  &:last-child {
+    border-bottom: none;
+  }
+`;
+
+const StudentAvatar = styled.img`
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+`;
+
+const StudentInfo = styled.div`
+  flex: 1;
+`;
+
+const StudentName = styled.div`
+  font-weight: 600;
+  font-size: 14px;
+  color: #111;
+`;
+
+const StudentEmail = styled.div`
+  font-size: 12px;
+  color: #666;
+`;
+
 /* ===================== COMPONENT ===================== */
 
 const Sessions: React.FC = () => {
@@ -78,6 +138,9 @@ const Sessions: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [showBooking, setShowBooking] = useState(false);
   const [bookingSession, setBookingSession] = useState<any | null>(null);
+  const [expandedSessionId, setExpandedSessionId] = useState<string | null>(null);
+  const [sessionStudents, setSessionStudents] = useState<{ [key: string]: any[] }>({});
+  const [loadingStudents, setLoadingStudents] = useState<{ [key: string]: boolean }>({});
 
   const [form, setForm] = useState({
     date: "",
@@ -119,6 +182,34 @@ const Sessions: React.FC = () => {
     });
     const data = await safeJson(res);
     if (data.success) setMySessions(data.sessions || []);
+  };
+
+  const fetchSessionStudents = async (sessionId: string) => {
+    try {
+      setLoadingStudents((prev) => ({ ...prev, [sessionId]: true }));
+      const res = await fetch(`${BACKEND}/api/sessions/${sessionId}/students`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      });
+      const data = await safeJson(res);
+      if (data.success) {
+        setSessionStudents((prev) => ({ ...prev, [sessionId]: data.students }));
+      }
+    } catch (err) {
+      console.error("Failed to fetch students:", err);
+    } finally {
+      setLoadingStudents((prev) => ({ ...prev, [sessionId]: false }));
+    }
+  };
+
+  const toggleSessionExpanded = (sessionId: string) => {
+    if (expandedSessionId === sessionId) {
+      setExpandedSessionId(null);
+    } else {
+      setExpandedSessionId(sessionId);
+      if (!sessionStudents[sessionId]) {
+        fetchSessionStudents(sessionId);
+      }
+    }
   };
 
   /* ===================== EFFECTS ===================== */
@@ -202,24 +293,67 @@ const Sessions: React.FC = () => {
         <Card>
           <h3>Available Sessions</h3>
           {loading ? <p>Loading...</p> : (
-           <List>
+            <List>
               {mySessions.map((s) => (
                 <div key={s._id}>
-                  <strong>{s.topic}</strong>
-                  <div>{new Date(s.date).toLocaleString()}</div>
+                  <SessionItem onClick={() => toggleSessionExpanded(s._id)}>
+                    <SessionHeader>
+                      <div>
+                        <strong>{s.topic}</strong>
+                        <div style={{ fontSize: "12px", color: "#666", marginTop: "4px" }}>
+                          {new Date(s.date).toLocaleString()}
+                        </div>
+                        <div style={{ fontSize: "12px", color: "#2563eb", marginTop: "4px" }}>
+                          {s.students?.length || 0} student{s.students?.length !== 1 ? "s" : ""} booked
+                        </div>
+                      </div>
+                      <span style={{ fontSize: "18px" }}>
+                        {expandedSessionId === s._id ? "▼" : "▶"}
+                      </span>
+                    </SessionHeader>
+                  </SessionItem>
 
-                 
+                  {expandedSessionId === s._id && (
+                    <StudentList>
+                      {loadingStudents[s._id] ? (
+                        <p>Loading students...</p>
+                      ) : (sessionStudents[s._id] && sessionStudents[s._id].length > 0) ? (
+                        <div>
+                          <strong style={{ marginBottom: "12px", display: "block" }}>
+                            📚 Students Booked:
+                          </strong>
+                          {sessionStudents[s._id].map((student: any) => (
+                            <StudentItem key={student._id}>
+                              <StudentAvatar
+                                src={student.avatar || "https://via.placeholder.com/32"}
+                                alt={student.name}
+                              />
+                              <StudentInfo>
+                                <StudentName>{student.name}</StudentName>
+                                <StudentEmail>{student.email}</StudentEmail>
+                              </StudentInfo>
+                            </StudentItem>
+                          ))}
+                        </div>
+                      ) : (
+                        <p style={{ color: "#999", fontSize: "14px" }}>
+                          No students have booked this session yet
+                        </p>
+                      )}
+                    </StudentList>
+                  )}
+
                   {s.meetLink ? (
                     <a
                       href={s.meetLink}
                       target="_blank"
                       rel="noreferrer"
-                      style={{ color: "#2563eb", fontWeight: 600 }}
+                      style={{ color: "#2563eb", fontWeight: 600, marginTop: "8px", display: "block" }}
                     >
                       🎥 Join Google Meet
                     </a>
                   ) : (
-                    <small style={{ color: "#999" }}>
+                    <small style={{ color: "#999", marginTop: "8px", display: "block" }}>
                       Meet link not generated yet
                     </small>
                   )}

@@ -141,22 +141,64 @@ router.post("/", auth, async (req, res) => {
 
 
 router.post("/:id/book", auth, async (req, res) => {
-  const session = await Session.findById(req.params.id);
-  if (!session) {
-    return res.status(404).json({ success: false });
+  try {
+    const session = await Session.findById(req.params.id);
+    if (!session) {
+      return res.status(404).json({ success: false, message: "Session not found" });
+    }
+
+    // Check if student already booked this session
+    if (session.students.includes(req.user.userId)) {
+      return res.json({ success: false, message: "Already booked this session" });
+    }
+
+    // Add student to the session
+    session.students.push(req.user.userId);
+    session.isBooked = true; // Mark as booked for backward compatibility
+    await session.save();
+
+    res.json({
+      success: true,
+      message: "Session booked successfully",
+      meetLink: session.meetLink,
+    });
+  } catch (err) {
+    console.error("BOOK SESSION ERROR:", err);
+    res.status(500).json({ success: false, message: "Failed to book session" });
   }
+});
 
-  if (session.isBooked) {
-    return res.json({ success: false, message: "Already booked" });
+/* =====================================================
+   GET STUDENTS FOR A SESSION (TUTOR ONLY)
+===================================================== */
+router.get("/:id/students", auth, async (req, res) => {
+  try {
+    const session = await Session.findById(req.params.id).populate(
+      "students",
+      "name email avatar"
+    );
+
+    if (!session) {
+      return res.status(404).json({ success: false, message: "Session not found" });
+    }
+
+    // Verify that the authenticated user is the session mentor
+    if (session.mentor.toString() !== req.user.userId) {
+      return res.status(403).json({
+        success: false,
+        message: "Only the session mentor can view booked students",
+      });
+    }
+
+    res.json({
+      success: true,
+      students: session.students,
+      totalStudents: session.students.length,
+    });
+  } catch (err) {
+    console.error("GET SESSION STUDENTS ERROR:", err);
+    res.status(500).json({ success: false, message: "Failed to fetch students" });
   }
-
-  session.isBooked = true;
-  await session.save();
-
-  res.json({
-    success: true,
-    meetLink: session.meetLink,
-  });
 });
 
 export default router;
