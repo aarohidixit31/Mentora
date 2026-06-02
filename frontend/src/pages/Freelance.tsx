@@ -138,15 +138,82 @@ const SubmitButton = styled.button`
 `;
 
 
-const BidButton = styled.button`
+const BidButton = styled.button<{ $disabled?: boolean }>`
   display: block;        /* ✅ THIS IS THE KEY */
   margin-top: 12px;
-  background: #10b981;
+  background: ${({ $disabled }) => ($disabled ? "#9ca3af" : "#10b981")};
   color: white;
   border: none;
   padding: 8px 14px;
   border-radius: 6px;
-  cursor: pointer;
+  cursor: ${({ $disabled }) => ($disabled ? "not-allowed" : "pointer")};
+  opacity: ${({ $disabled }) => ($disabled ? 0.7 : 1)};
+
+  &:hover {
+    background: ${({ $disabled }) => ($disabled ? "#9ca3af" : "#059669")};
+  }
+`;
+
+const ProposalsSection = styled.div`
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 2px solid #e5e7eb;
+`;
+
+const ProposalsTitle = styled.h4`
+  font-size: 14px;
+  font-weight: 600;
+  color: #555;
+  margin-bottom: 12px;
+`;
+
+const ProposalCard = styled.div`
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 10px;
+  font-size: 13px;
+`;
+
+const ProposalHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+`;
+
+const FreelancerName = styled.strong`
+  color: #2563eb;
+`;
+
+const BidAmount = styled.span`
+  color: #10b981;
+  font-weight: 600;
+`;
+
+const ProposalDetail = styled.p`
+  margin: 6px 0;
+  color: #666;
+  line-height: 1.4;
+`;
+
+const PortfolioLinks = styled.div`
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #d1d5db;
+`;
+
+const PortfolioLink = styled.a`
+  display: inline-block;
+  margin-right: 8px;
+  color: #2563eb;
+  text-decoration: none;
+  font-size: 12px;
+  
+  &:hover {
+    text-decoration: underline;
+  }
 `;
 
 
@@ -178,6 +245,16 @@ const Modal = styled.div`
 
 /* ===================== TYPES ===================== */
 
+interface Bid {
+  _id: string;
+  freelancer: { _id: string; name: string; email: string };
+  bidAmount: number;
+  timeline: string;
+  coverLetter: string;
+  portfolioLinks?: string[];
+  submittedAt: string;
+}
+
 interface Project {
   _id: string;
   title: string;
@@ -185,6 +262,8 @@ interface Project {
   skills?: string[];
   budget?: { min: number; max: number };
   postedBy?: { _id: string; name: string };
+  bids?: Bid[];
+  proposalsCount?: number;
 }
 
 /* ===================== COMPONENT ===================== */
@@ -376,20 +455,68 @@ const Freelance: React.FC = () => {
           <small>
             Budget: ₹{p.budget?.min ?? 0} – ₹{p.budget?.max ?? 0}
             {activeTab !== "my-projects" && <> • Posted by {p.postedBy?.name}</>}
+            {activeTab === "my-projects" && p.proposalsCount && (
+              <> • {p.proposalsCount} proposal{p.proposalsCount !== 1 ? "s" : ""}</>
+            )}
           </small>
 
           {activeTab === "browse" &&
             user?.role === "freelancer" &&
             p.postedBy?._id !== user?._id && (
               <BidButton
+                $disabled={p.bids?.some((b) => b.freelancer?._id === user?._id)}
                 onClick={() => {
-                  setSelectedProject(p);
-                  setShowBidModal(true);
+                  if (!p.bids?.some((b) => b.freelancer?._id === user?._id)) {
+                    setSelectedProject(p);
+                    setShowBidModal(true);
+                  }
                 }}
               >
-                Submit Proposal
+                {p.bids?.some((b) => b.freelancer?._id === user?._id)
+                  ? "✓ Submitted"
+                  : "Submit Proposal"}
               </BidButton>
             )}
+
+          {activeTab === "my-projects" && p.bids && p.bids.length > 0 && (
+            <ProposalsSection>
+              <ProposalsTitle>📋 Proposals Received ({p.bids.length})</ProposalsTitle>
+              {p.bids.map((bid) => (
+                <ProposalCard key={bid._id}>
+                  <ProposalHeader>
+                    <FreelancerName>{bid.freelancer?.name}</FreelancerName>
+                    <BidAmount>₹{bid.bidAmount}</BidAmount>
+                  </ProposalHeader>
+                  <ProposalDetail>
+                    <strong>Timeline:</strong> {bid.timeline}
+                  </ProposalDetail>
+                  <ProposalDetail>
+                    <strong>Message:</strong> {bid.coverLetter}
+                  </ProposalDetail>
+                  {bid.portfolioLinks && bid.portfolioLinks.length > 0 && (
+                    <PortfolioLinks>
+                      <strong style={{ fontSize: "12px" }}>Portfolio:</strong>
+                      <div>
+                        {bid.portfolioLinks.map((link, idx) => (
+                          <PortfolioLink
+                            key={idx}
+                            href={link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            Link {idx + 1}
+                          </PortfolioLink>
+                        ))}
+                      </div>
+                    </PortfolioLinks>
+                  )}
+                  <ProposalDetail style={{ fontSize: "11px", color: "#999", marginTop: "8px" }}>
+                    📅 {new Date(bid.submittedAt).toLocaleDateString()}
+                  </ProposalDetail>
+                </ProposalCard>
+              ))}
+            </ProposalsSection>
+          )}
         </Card>
       ))}
 

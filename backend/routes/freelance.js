@@ -72,7 +72,8 @@ router.get("/my-projects", auth, async (req, res) => {
     const projects = await Project.find({
       postedBy: req.user.userId,
     })
-     .populate("postedBy", "name") 
+     .populate("postedBy", "name")
+     .populate("bids.freelancer", "name email")
     .sort({ createdAt: -1 });
 
     res.json({ success: true, projects });
@@ -81,5 +82,67 @@ router.get("/my-projects", auth, async (req, res) => {
   }
 });
 
+/* ================= SUBMIT BID/PROPOSAL ================= */
+router.post("/:projectId/bid", auth, async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const { bidAmount, timeline, coverLetter, portfolioLinks } = req.body;
+
+    // Validate required fields
+    if (!bidAmount || !timeline || !coverLetter) {
+      return res.status(400).json({
+        success: false,
+        message: "Missing required fields: bidAmount, timeline, coverLetter",
+      });
+    }
+
+    // Find the project
+    const project = await Project.findById(projectId);
+    if (!project) {
+      return res.status(404).json({
+        success: false,
+        message: "Project not found",
+      });
+    }
+
+    // Check if freelancer already bid on this project
+    const existingBid = project.bids.find(
+      (b) => b.freelancer.toString() === req.user.userId
+    );
+    if (existingBid) {
+      return res.status(400).json({
+        success: false,
+        message: "You have already submitted a proposal for this project",
+      });
+    }
+
+    // Create and add the bid
+    const bid = {
+      freelancer: req.user.userId,
+      bidAmount: Number(bidAmount),
+      timeline,
+      coverLetter,
+      portfolioLinks: portfolioLinks || [],
+      submittedAt: new Date(),
+    };
+
+    project.bids.push(bid);
+    project.proposalsCount = project.bids.length;
+
+    const updatedProject = await project.save();
+
+    res.status(201).json({
+      success: true,
+      message: "Proposal submitted successfully",
+      project: updatedProject,
+    });
+  } catch (err) {
+    console.error("Submit bid error:", err);
+    res.status(500).json({
+      success: false,
+      message: "Failed to submit proposal",
+    });
+  }
+});
 
 export default router;

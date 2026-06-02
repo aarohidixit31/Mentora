@@ -1,5 +1,33 @@
 import mongoose from "mongoose";
 
+const bidSchema = new mongoose.Schema(
+  {
+    freelancer: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    bidAmount: {
+      type: Number,
+      required: true,
+    },
+    timeline: {
+      type: String,
+      required: true,
+    },
+    coverLetter: {
+      type: String,
+      required: true,
+    },
+    portfolioLinks: [String],
+    submittedAt: {
+      type: Date,
+      default: Date.now,
+    },
+  },
+  { _id: true }
+);
+
 const projectSchema = new mongoose.Schema(
   {
     title: {
@@ -23,6 +51,8 @@ const projectSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
+
+    bids: [bidSchema],
 
     proposalsCount: {
       type: Number,
